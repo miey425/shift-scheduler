@@ -19,6 +19,7 @@ import { requiresPositionSkill } from "@/lib/shifts/shiftTemplates";
 import { getDateKeysInRange } from "@/lib/shifts/shiftTemplates";
 import { getBusinessDayLabel, isWithinBusinessHours, resolveBusinessDay } from "@/lib/shifts/businessHours";
 import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
+import { encodeShiftPeriodId } from "@/lib/availability/shortUrl";
 import {
   assignEmployeeAction,
   autoAssignShiftPeriodAction,
@@ -224,9 +225,10 @@ export default async function ShiftPeriodDetailPage({
   const host = requestHeaders.get("host");
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
   const origin = host ? `${protocol}://${host}` : "";
+  const shortAvailabilityPath = `/s/${encodeShiftPeriodId(period.id)}`;
   const commonAvailabilityUrl = origin
-    ? `${origin}/availability/periods/${period.id}`
-    : `/availability/periods/${period.id}`;
+    ? `${origin}${shortAvailabilityPath}`
+    : shortAvailabilityPath;
   const availabilitySubmissionByEmployeeId = new Map(
     availabilitySubmissions.map((submission) => [
       submission.employeeId,
