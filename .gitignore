@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+dist
+coverage
+tsconfig.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+20260806_133921000_iOS.jpg
+AGENTS.md
+CLAUDE.md

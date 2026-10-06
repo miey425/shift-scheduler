@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785936924624,
+      "tag": "0000_sad_peter_quill",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786009549889,
+      "tag": "0001_normal_king_cobra",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786281662268,
+      "tag": "0002_purple_tempest",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786283000000,
+      "tag": "0003_rename_hall_last_position",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786283400000,
+      "tag": "0004_remove_open_optional_position_skills",
+      "breakpoints": true
+    }
+  ]
+}
