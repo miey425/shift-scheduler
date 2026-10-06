@@ -3,6 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { StatusMessage } from "@/components/admin/StatusMessage";
+import { BusinessDaySettingSelect } from "@/components/admin/BusinessDaySettingSelect";
 import {
   findShiftPeriodById,
   listShiftSlotsByPeriodId,
@@ -446,7 +447,7 @@ export default async function ShiftPeriodDetailPage({
             <div className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-base font-semibold text-slate-950">日ごとの営業時間</h2>
               <p className="mt-1 text-sm text-slate-600">
-                自動では翌日が土日祝なら22:00、それ以外は21:00まで営業します。
+                自動では火曜日を定休日とし、ほかの日は翌日が土日祝なら22:00、それ以外は21:00まで営業します。
               </p>
             </div>
             <div className="divide-y divide-slate-200">
@@ -476,23 +477,10 @@ export default async function ShiftPeriodDetailPage({
                     <label className="sr-only" htmlFor={`business-day-${date}`}>
                       {formatDateTabLabel(date)}の営業設定
                     </label>
-                    <select
-                      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                    <BusinessDaySettingSelect
                       defaultValue={selectedSetting}
                       id={`business-day-${date}`}
-                      name="setting"
-                    >
-                      <option value="auto">自動</option>
-                      <option value="closed">定休日</option>
-                      <option value="21:00">21時まで</option>
-                      <option value="22:00">22時まで</option>
-                    </select>
-                    <button
-                      className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                      type="submit"
-                    >
-                      保存
-                    </button>
+                    />
                   </form>
                 );
               })}

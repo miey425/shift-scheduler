@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { compareShiftSlots } from "@/lib/shifts/shiftSlotSorting";
 import { requiresPositionSkill } from "@/lib/shifts/shiftTemplates";
+import { isEligibleForAutoAssignment } from "@/lib/shifts/availabilityGroups";
 import { filterSlotsByBusinessHours, isWithinBusinessHours } from "@/lib/shifts/businessHours";
 import { getBusinessDay, listBusinessDayOverrides } from "./businessDayRepository";
 
@@ -225,6 +226,7 @@ export async function autoAssignShiftPeriod(input: {
         .where(
           and(
             eq(shiftSlots.shiftPeriodId, input.shiftPeriodId),
+            eq(availabilitySubmissions.shiftPeriodId, input.shiftPeriodId),
             eq(availabilitySubmissions.status, "submitted"),
           ),
         ),
@@ -310,7 +312,9 @@ export async function autoAssignShiftPeriod(input: {
           employeeSlots: employeeSlotsByEmployeeId.get(employee.id) ?? [],
           state: stateByEmployeeId.get(employee.id) ?? createEmptyAssignmentState(),
         }))
-        .filter(({ availabilityStatus }) => availabilityStatus !== "unavailable")
+        .filter(({ availabilityStatus }) =>
+          isEligibleForAutoAssignment(availabilityStatus),
+        )
         .filter(({ employee, employeeSlots, state }) =>
           canAssignEmployeeToSlot({ employee, employeeSlots, slot, state }),
         )
@@ -466,6 +470,7 @@ export async function assignEmployeeToShiftSlot(input: {
         eq(availabilities.shiftSlotId, input.shiftSlotId),
         eq(availabilities.status, "unavailable"),
         eq(availabilitySubmissions.employeeId, input.employeeId),
+        eq(availabilitySubmissions.shiftPeriodId, slot.shiftPeriodId),
         eq(availabilitySubmissions.status, "submitted"),
       ),
     )

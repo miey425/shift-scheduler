@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   getCappedEndTime,
   getDefaultClosingTime,
+  isDefaultClosedDay,
   isJapaneseHoliday,
   isPublicHoliday,
   isWeekend,
@@ -52,4 +53,22 @@ test("手動設定を優先し、定休日と閉店時刻を守る", () => {
     resolveBusinessDay("2026-10-09", { isClosed: false, closingTime: "21:00:00" }).closingTime,
     "21:00",
   );
+});
+
+test("火曜日は自動で定休日になり、手動設定で営業できる", () => {
+  const tuesday = resolveBusinessDay("2026-10-13");
+  const manuallyOpen = resolveBusinessDay("2026-10-13", {
+    isClosed: false,
+    closingTime: "21:00",
+  });
+
+  assert.equal(isDefaultClosedDay("2026-10-13"), true);
+  assert.equal(tuesday.isClosed, true);
+  assert.equal(tuesday.closingTime, null);
+  assert.equal(tuesday.isManualOverride, false);
+  assert.equal(isWithinBusinessHours("17:00", "20:00", tuesday), false);
+  assert.equal(getCappedEndTime("17:00", "22:00", tuesday), null);
+  assert.equal(manuallyOpen.isClosed, false);
+  assert.equal(manuallyOpen.closingTime, "21:00");
+  assert.equal(manuallyOpen.isManualOverride, true);
 });

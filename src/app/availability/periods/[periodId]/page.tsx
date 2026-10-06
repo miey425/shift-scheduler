@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { AvailabilitySelectionGrid } from "@/components/availability/AvailabilitySelectionGrid";
+import { EmployeeAutoSubmitSelect } from "@/components/availability/EmployeeAutoSubmitSelect";
 import {
   availabilityGroupLabels,
   availabilityGroupOrder,
@@ -8,6 +10,8 @@ import {
   type AvailabilityGroupKey,
 } from "@/lib/shifts/availabilityGroups";
 import { shiftPeriodIdSchema } from "@/lib/validators/shift";
+import { employeeIdSchema } from "@/lib/validators/employee";
+import { rememberedEmployeeCookieName } from "@/lib/availability/rememberedEmployee";
 import {
   filterSlotsByBusinessHours,
   getBusinessDayLabel,
@@ -25,7 +29,11 @@ import {
   findShiftPeriodById,
   listShiftSlotsByPeriodId,
 } from "@/repositories/shiftPeriodRepository";
-import { submitSharedAvailabilityAction } from "./actions";
+import {
+  changeSharedAvailabilityEmployeeAction,
+  chooseSharedAvailabilityEmployeeAction,
+  submitSharedAvailabilityAction,
+} from "./actions";
 
 type SharedAvailabilityPageProps = {
   params: Promise<{
@@ -93,9 +101,20 @@ export default async function SharedAvailabilityPage({
   const overridesByDate = new Map(overrides.map((override) => [override.workDate, override]));
   const eligibleSlots = filterSlotsByBusinessHours(slots, overridesByDate);
 
-  const selectedEmployee = query?.employeeId
-    ? employees.find((employee) => employee.id === query.employeeId)
+  const rememberedCookie = (await cookies()).get(rememberedEmployeeCookieName);
+  const rememberedEmployeeId = rememberedCookie?.value;
+  const parsedRememberedEmployeeId = employeeIdSchema.safeParse(rememberedEmployeeId);
+  const rememberedEmployee = parsedRememberedEmployeeId.success
+    ? employees.find((employee) => employee.id === parsedRememberedEmployeeId.data)
     : null;
+
+  if (query?.employeeId === undefined && rememberedCookie && !rememberedEmployee) {
+    redirect(`/availability/periods/${period.id}/clear-saved-employee`);
+  }
+
+  const selectedEmployee = query?.employeeId === undefined
+    ? rememberedEmployee
+    : employees.find((employee) => employee.id === query.employeeId);
   const submission = selectedEmployee
     ? await findAvailabilitySubmission({
         employeeId: selectedEmployee.id,
@@ -155,41 +174,54 @@ export default async function SharedAvailabilityPage({
             共通提出URL
           </p>
           <h1 className="mt-1 text-xl font-semibold text-slate-950">
-            希望シフト提出
+            {selectedEmployee
+              ? `${selectedEmployee.displayName}さんのシフト希望`
+              : "希望シフト提出"}
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {period.name} / {period.startDate} から {period.endDate}
           </p>
         </section>
 
-        <section className="rounded-md border border-slate-200 bg-white p-5">
-          <form className="grid gap-3 md:grid-cols-[1fr_auto]" method="get">
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">
-                名前を選択
-              </span>
-              <select
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
-                defaultValue={selectedEmployee?.id ?? ""}
-                name="employeeId"
-                required
+        {selectedEmployee ? (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 bg-white p-5">
+            <p className="text-sm text-slate-700">
+              <span className="font-semibold text-slate-950">{selectedEmployee.displayName}</span>さんとして入力しています。
+            </p>
+            <form action={changeSharedAvailabilityEmployeeAction}>
+              <input name="shiftPeriodId" type="hidden" value={period.id} />
+              <button
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                type="submit"
               >
-                <option value="">選択してください</option>
-                {employees.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="self-end rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
-              type="submit"
-            >
-              表示
-            </button>
-          </form>
-        </section>
+                名前を変更
+              </button>
+            </form>
+          </section>
+        ) : (
+          <section className="rounded-md border border-slate-200 bg-white p-5">
+            <form action={chooseSharedAvailabilityEmployeeAction} className="space-y-4">
+              <input name="shiftPeriodId" type="hidden" value={period.id} />
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  className="mt-0.5 size-4 rounded border-slate-300"
+                  name="rememberEmployee"
+                  type="checkbox"
+                />
+                <span>この端末では次回から名前の選択を省略する</span>
+              </label>
+              <p className="text-xs text-slate-500">
+                名前を選ぶと、そのまま希望入力画面へ進みます。
+              </p>
+              <EmployeeAutoSubmitSelect
+                employees={employees.map((employee) => ({
+                  id: employee.id,
+                  displayName: employee.displayName,
+                }))}
+              />
+            </form>
+          </section>
+        )}
 
         {period.status !== "open" ? (
           <section className="rounded-md border border-amber-200 bg-amber-50 p-5">
@@ -207,7 +239,7 @@ export default async function SharedAvailabilityPage({
             受付中ではないため送信できません。
           </div>
         ) : null}
-        {query?.employeeId && !selectedEmployee ? (
+        {(query?.employeeId || query?.error === "invalid") && !selectedEmployee ? (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
             有効な従業員を選択してください。
           </div>

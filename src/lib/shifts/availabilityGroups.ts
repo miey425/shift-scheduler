@@ -15,6 +15,12 @@ export const availabilityGroupOrder: AvailabilityGroupKey[] = [
   "dinner",
 ];
 
+export function isEligibleForAutoAssignment(
+  status: "available" | "unavailable" | "preferred" | undefined,
+) {
+  return status === "available" || status === "preferred";
+}
+
 function isLunchSlot(slot: GroupableShiftSlot) {
   return slot.presetGroup === "weekday_lunch" || slot.presetGroup === "holiday_lunch";
 }

@@ -126,5 +126,11 @@ export async function listSubmittedAvailabilitiesByPeriodId(shiftPeriodId: strin
       eq(availabilities.availabilitySubmissionId, availabilitySubmissions.id),
     )
     .innerJoin(shiftSlots, eq(availabilities.shiftSlotId, shiftSlots.id))
-    .where(eq(shiftSlots.shiftPeriodId, shiftPeriodId));
+    .where(
+      and(
+        eq(shiftSlots.shiftPeriodId, shiftPeriodId),
+        eq(availabilitySubmissions.shiftPeriodId, shiftPeriodId),
+        eq(availabilitySubmissions.status, "submitted"),
+      ),
+    );
 }

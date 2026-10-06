@@ -7,6 +7,10 @@ import {
   shiftPeriodIdSchema,
 } from "@/lib/validators/shift";
 import { employeeIdSchema } from "@/lib/validators/employee";
+import {
+  clearRememberedEmployee,
+  saveRememberedEmployee,
+} from "@/lib/availability/rememberedEmployee";
 import { filterSlotsByBusinessHours } from "@/lib/shifts/businessHours";
 import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
 import {
@@ -29,6 +33,49 @@ function getRedirectPath(shiftPeriodId: string, employeeId?: string) {
     : "";
 
   return `/availability/periods/${shiftPeriodId}${employeeParam}`;
+}
+
+export async function chooseSharedAvailabilityEmployeeAction(formData: FormData) {
+  const periodId = shiftPeriodIdSchema.safeParse(formData.get("shiftPeriodId"));
+  const employeeId = employeeIdSchema.safeParse(formData.get("employeeId"));
+
+  if (!periodId.success) {
+    redirect("/availability/periods/invalid?error=invalid");
+  }
+
+  const redirectPath = getRedirectPath(periodId.data);
+
+  if (!employeeId.success) {
+    redirect(`${redirectPath}?error=invalid`);
+  }
+
+  const [period, employees] = await Promise.all([
+    findShiftPeriodById(periodId.data),
+    listActiveEmployees(),
+  ]);
+
+  if (!period || !employees.some((employee) => employee.id === employeeId.data)) {
+    redirect(`${redirectPath}?error=invalid`);
+  }
+
+  if (formData.get("rememberEmployee") === "on") {
+    await saveRememberedEmployee(employeeId.data);
+  } else {
+    await clearRememberedEmployee();
+  }
+
+  redirect(getRedirectPath(periodId.data, employeeId.data));
+}
+
+export async function changeSharedAvailabilityEmployeeAction(formData: FormData) {
+  const periodId = shiftPeriodIdSchema.safeParse(formData.get("shiftPeriodId"));
+
+  if (!periodId.success) {
+    redirect("/availability/periods/invalid?error=invalid");
+  }
+
+  await clearRememberedEmployee();
+  redirect(getRedirectPath(periodId.data));
 }
 
 export async function submitSharedAvailabilityAction(formData: FormData) {

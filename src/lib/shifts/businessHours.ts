@@ -27,6 +27,10 @@ export function isWeekend(date: string) {
   return day === 0 || day === 6;
 }
 
+export function isDefaultClosedDay(date: string) {
+  return toUtcDate(date).getUTCDay() === 2;
+}
+
 export function isJapaneseHoliday(date: string) {
   try {
     return japaneseHolidays.isHoliday(date);
@@ -52,6 +56,14 @@ export function resolveBusinessDay(
       isClosed: override.isClosed,
       closingTime: override.isClosed ? null : override.closingTime?.slice(0, 5) ?? null,
       isManualOverride: true,
+    };
+  }
+
+  if (isDefaultClosedDay(date)) {
+    return {
+      isClosed: true,
+      closingTime: null,
+      isManualOverride: false,
     };
   }
 
