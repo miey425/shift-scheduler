@@ -7,6 +7,8 @@ import {
   shiftPeriodIdSchema,
 } from "@/lib/validators/shift";
 import { employeeIdSchema } from "@/lib/validators/employee";
+import { filterSlotsByBusinessHours } from "@/lib/shifts/businessHours";
+import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
 import {
   getAvailabilityGroupFormName,
   getAvailabilityGroupKey,
@@ -37,10 +39,11 @@ export async function submitSharedAvailabilityAction(formData: FormData) {
     redirect("/availability/periods/invalid?error=invalid");
   }
 
-  const [period, employees, slots] = await Promise.all([
+  const [period, employees, slots, overrides] = await Promise.all([
     findShiftPeriodById(periodId.data),
     listActiveEmployees(),
     listShiftSlotsByPeriodId(periodId.data),
+    listBusinessDayOverrides(periodId.data),
   ]);
   const selectedEmployee = employees.find(
     (employee) => employee.id === employeeId.data,
@@ -56,7 +59,9 @@ export async function submitSharedAvailabilityAction(formData: FormData) {
   }
 
   const memo = availabilityMemoSchema.safeParse(formData.get("memo"));
-  const availabilities: AvailabilityInput[] = slots.map((slot) => {
+  const overridesByDate = new Map(overrides.map((override) => [override.workDate, override]));
+  const eligibleSlots = filterSlotsByBusinessHours(slots, overridesByDate);
+  const availabilities: AvailabilityInput[] = eligibleSlots.map((slot) => {
     const groupKey = getAvailabilityGroupKey(slot);
     const status = availabilityStatusSchema.safeParse(
       formData.get(getAvailabilityGroupFormName(slot.workDate, groupKey)),

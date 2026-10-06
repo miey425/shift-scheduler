@@ -12,6 +12,8 @@ import {
 } from "@/db/schema";
 import { compareShiftSlots } from "@/lib/shifts/shiftSlotSorting";
 import { requiresPositionSkill } from "@/lib/shifts/shiftTemplates";
+import { filterSlotsByBusinessHours, isWithinBusinessHours } from "@/lib/shifts/businessHours";
+import { getBusinessDay, listBusinessDayOverrides } from "./businessDayRepository";
 
 export type ShiftAssignmentWithEmployee = {
   id: string;
@@ -203,7 +205,7 @@ export async function autoAssignShiftPeriod(input: {
   shiftPeriodId: string;
   assignedByAdminId: string;
 }) {
-  const [slots, activeEmployees, currentAssignments, submittedAvailabilities] =
+  const [slots, activeEmployees, currentAssignments, submittedAvailabilities, overrides] =
     await Promise.all([
       listShiftSlotsForAssignment(input.shiftPeriodId),
       listActiveEmployeesForAssignment(),
@@ -226,8 +228,10 @@ export async function autoAssignShiftPeriod(input: {
             eq(availabilitySubmissions.status, "submitted"),
           ),
         ),
+      listBusinessDayOverrides(input.shiftPeriodId),
     ]);
-  const sortedSlots = [...slots].sort((a, b) => {
+  const overridesByDate = new Map(overrides.map((override) => [override.workDate, override]));
+  const sortedSlots = filterSlotsByBusinessHours(slots, overridesByDate).sort((a, b) => {
     const dateDiff = a.workDate.localeCompare(b.workDate);
 
     return dateDiff !== 0 ? dateDiff : compareShiftSlots(a, b);
@@ -403,6 +407,12 @@ export async function assignEmployeeToShiftSlot(input: {
 
   if (!slot) {
     return { ok: false, reason: "slot_not_found" as const };
+  }
+
+  const businessDay = await getBusinessDay(slot.shiftPeriodId, slot.workDate);
+
+  if (!isWithinBusinessHours(slot.startTime, slot.endTime, businessDay)) {
+    return { ok: false, reason: "outside_business_hours" as const };
   }
 
   const [employee] = await getDb()

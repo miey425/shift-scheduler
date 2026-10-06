@@ -36,6 +36,13 @@
       "when": 1786283400000,
       "tag": "0004_remove_open_optional_position_skills",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791244800000,
+      "tag": "0005_business_day_overrides",
+      "breakpoints": true
     }
   ]
 }

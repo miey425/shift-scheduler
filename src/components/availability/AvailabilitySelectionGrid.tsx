@@ -14,6 +14,8 @@ export type AvailabilitySelectionDay = {
   date: string;
   label: string;
   isHolidaySchedule: boolean;
+  businessLabel: string;
+  isClosed: boolean;
   groups: AvailabilitySelectionGroup[];
 };
 
@@ -106,13 +108,12 @@ export function AvailabilitySelectionGrid({
                 key={day?.date ?? `${weekStartKey}-empty-header-${index}`}
               >
                 {day ? (
-                  <p
-                    className={`text-sm font-semibold ${
-                      day.isHolidaySchedule ? "text-red-600" : "text-slate-950"
-                    }`}
-                  >
-                    {day.label}
-                  </p>
+                  <>
+                    <p className={`text-sm font-semibold ${day.isHolidaySchedule ? "text-red-600" : "text-slate-950"}`}>
+                      {day.label}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">{day.businessLabel}</p>
+                  </>
                 ) : null}
               </div>
             ))}
@@ -123,7 +124,9 @@ export function AvailabilitySelectionGrid({
                 className="space-y-2 border-r border-slate-200 p-2 last:border-r-0"
                 key={day?.date ?? `${weekStartKey}-empty-body-${index}`}
               >
-                {day
+                {day?.isClosed ? (
+                  <p className="py-4 text-center text-xs text-slate-500">入力不可</p>
+                ) : day
                   ? day.groups.map((group) => {
                       const status =
                         statuses[group.formName] ?? group.defaultStatus;

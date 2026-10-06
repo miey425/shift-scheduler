@@ -1,3 +1,5 @@
+import { isPublicHoliday } from "./businessHours";
+
 export type ShiftTemplateGroup =
   | "weekday_lunch"
   | "weekday_dinner"
@@ -442,11 +444,7 @@ export function getDateKeysInRange(startDate: string, endDate: string) {
 }
 
 export function getTemplateGroupsForDate(date: string): ShiftTemplateGroup[] {
-  const { year, month, day } = parseDateParts(date);
-  const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-  return isWeekend
+  return isPublicHoliday(date)
     ? ["holiday_lunch", "holiday_dinner"]
     : ["weekday_lunch", "weekday_dinner"];
 }

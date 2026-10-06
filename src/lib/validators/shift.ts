@@ -112,6 +112,7 @@ export const shiftSlotIdSchema = z.string().uuid();
 export const shiftAssignmentIdSchema = z.string().uuid();
 export const shiftTemplateIdSchema = z.string().min(1).max(120);
 export const shiftWorkDateSchema = z.string().date();
+export const businessDaySettingSchema = z.enum(["auto", "closed", "21:00", "22:00"]);
 export const employeeAccessTokenSchema = z.string().trim().min(20).max(200);
 export const availabilityStatusSchema = z.enum([
   "available",

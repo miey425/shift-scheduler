@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -14,6 +15,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export const adminRoleEnum = pgEnum("admin_role", [
   "owner",
@@ -117,6 +119,30 @@ export const shiftPeriods = pgTable(
   (table) => [
     index("shift_periods_start_date_idx").on(table.startDate),
     index("shift_periods_status_idx").on(table.status),
+  ],
+);
+
+export const businessDayOverrides = pgTable(
+  "business_day_overrides",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    shiftPeriodId: uuid("shift_period_id")
+      .notNull()
+      .references(() => shiftPeriods.id, { onDelete: "cascade" }),
+    workDate: date("work_date").notNull(),
+    isClosed: boolean("is_closed").notNull(),
+    closingTime: time("closing_time"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("business_day_overrides_period_date_unique").on(
+      table.shiftPeriodId,
+      table.workDate,
+    ),
+    check(
+      "business_day_overrides_state_check",
+      sql`(${table.isClosed} AND ${table.closingTime} IS NULL) OR (NOT ${table.isClosed} AND ${table.closingTime} IS NOT NULL)`,
+    ),
   ],
 );
 
@@ -281,9 +307,20 @@ export const employeesRelations = relations(employees, ({ many }) => ({
 
 export const shiftPeriodsRelations = relations(shiftPeriods, ({ many }) => ({
   shiftSlots: many(shiftSlots),
+  businessDayOverrides: many(businessDayOverrides),
   availabilitySubmissions: many(availabilitySubmissions),
   accessTokens: many(employeeAccessTokens),
 }));
+
+export const businessDayOverridesRelations = relations(
+  businessDayOverrides,
+  ({ one }) => ({
+    shiftPeriod: one(shiftPeriods, {
+      fields: [businessDayOverrides.shiftPeriodId],
+      references: [shiftPeriods.id],
+    }),
+  }),
+);
 
 export const shiftSlotsRelations = relations(shiftSlots, ({ one, many }) => ({
   shiftPeriod: one(shiftPeriods, {

@@ -8,6 +8,14 @@ import {
   type AvailabilityGroupKey,
 } from "@/lib/shifts/availabilityGroups";
 import { shiftPeriodIdSchema } from "@/lib/validators/shift";
+import {
+  filterSlotsByBusinessHours,
+  getBusinessDayLabel,
+  isPublicHoliday,
+  resolveBusinessDay,
+} from "@/lib/shifts/businessHours";
+import { getDateKeysInRange } from "@/lib/shifts/shiftTemplates";
+import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
 import { listActiveEmployees } from "@/repositories/employeeRepository";
 import {
   findAvailabilitySubmission,
@@ -71,15 +79,19 @@ export default async function SharedAvailabilityPage({
     notFound();
   }
 
-  const [period, slots, employees] = await Promise.all([
+  const [period, slots, employees, overrides] = await Promise.all([
     findShiftPeriodById(parsedPeriodId.data),
     listShiftSlotsByPeriodId(parsedPeriodId.data),
     listActiveEmployees(),
+    listBusinessDayOverrides(parsedPeriodId.data),
   ]);
 
   if (!period) {
     notFound();
   }
+
+  const overridesByDate = new Map(overrides.map((override) => [override.workDate, override]));
+  const eligibleSlots = filterSlotsByBusinessHours(slots, overridesByDate);
 
   const selectedEmployee = query?.employeeId
     ? employees.find((employee) => employee.id === query.employeeId)
@@ -99,9 +111,10 @@ export default async function SharedAvailabilityPage({
       availability,
     ]),
   );
-  const slotDates = Array.from(new Set(slots.map((slot) => slot.workDate)));
-  const availabilityDays = slotDates.map((date) => {
-    const dateSlots = slots.filter((slot) => slot.workDate === date);
+  const dates = getDateKeysInRange(period.startDate, period.endDate);
+  const availabilityDays = dates.map((date) => {
+    const businessDay = resolveBusinessDay(date, overridesByDate.get(date));
+    const dateSlots = eligibleSlots.filter((slot) => slot.workDate === date);
     const slotsByGroup = new Map<AvailabilityGroupKey, typeof dateSlots>();
 
     for (const slot of dateSlots) {
@@ -114,11 +127,9 @@ export default async function SharedAvailabilityPage({
     return {
       date,
       label: formatDateLabel(date),
-      isHolidaySchedule: dateSlots.some(
-        (slot) =>
-          slot.presetGroup === "holiday_lunch" ||
-          slot.presetGroup === "holiday_dinner",
-      ),
+      isHolidaySchedule: isPublicHoliday(date),
+      businessLabel: getBusinessDayLabel(businessDay),
+      isClosed: businessDay.isClosed,
       groups: availabilityGroupOrder
         .filter((groupKey) => slotsByGroup.has(groupKey))
         .map((groupKey) => {
@@ -207,7 +218,7 @@ export default async function SharedAvailabilityPage({
             <input name="shiftPeriodId" type="hidden" value={period.id} />
             <input name="employeeId" type="hidden" value={selectedEmployee.id} />
 
-            {slots.length === 0 ? (
+            {eligibleSlots.length === 0 ? (
               <section className="rounded-md border border-slate-200 bg-white p-5">
                 <p className="text-sm text-slate-600">
                   まだ希望を選べる固定シフトがありません。
@@ -230,7 +241,7 @@ export default async function SharedAvailabilityPage({
               </label>
               <button
                 className="mt-4 w-full rounded-md bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-700"
-                disabled={slots.length === 0}
+                disabled={eligibleSlots.length === 0}
                 type="submit"
               >
                 {selectedEmployee.displayName}さんとして送信

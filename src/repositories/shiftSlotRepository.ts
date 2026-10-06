@@ -2,7 +2,9 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { shiftSlots } from "@/db/schema";
+import { shiftPeriods, shiftSlots } from "@/db/schema";
+import { isWithinBusinessHours } from "@/lib/shifts/businessHours";
+import { getBusinessDay } from "./businessDayRepository";
 
 export type ShiftSlotInput = {
   shiftPeriodId: string;
@@ -21,6 +23,22 @@ export type ShiftSlotInput = {
 };
 
 export async function createShiftSlot(input: ShiftSlotInput) {
+  const [period] = await getDb()
+    .select({ startDate: shiftPeriods.startDate, endDate: shiftPeriods.endDate })
+    .from(shiftPeriods)
+    .where(eq(shiftPeriods.id, input.shiftPeriodId))
+    .limit(1);
+
+  if (!period || input.workDate < period.startDate || input.workDate > period.endDate) {
+    throw new Error("shift_period_date_invalid");
+  }
+
+  const businessDay = await getBusinessDay(input.shiftPeriodId, input.workDate);
+
+  if (!isWithinBusinessHours(input.startTime, input.endTime, businessDay)) {
+    throw new Error("shift_outside_business_hours");
+  }
+
   const [slot] = await getDb()
     .insert(shiftSlots)
     .values({

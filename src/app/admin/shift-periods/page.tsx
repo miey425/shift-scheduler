@@ -125,9 +125,14 @@ export default async function ShiftPeriodsPage({
               ) : null}
               {periods.map((period) => (
                 <div
-                  className="grid gap-3 px-5 py-3 transition hover:bg-slate-50 md:grid-cols-[1fr_auto]"
+                  className="relative grid gap-3 px-5 py-3 transition hover:bg-slate-50 md:grid-cols-[1fr_auto]"
                   key={period.id}
                 >
+                  <Link
+                    aria-label={`${period.name}の詳細へ`}
+                    className="absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-slate-900"
+                    href={`/admin/shift-periods/${period.id}`}
+                  />
                   <div>
                     <h3 className="font-medium text-slate-950">{period.name}</h3>
                     <p className="mt-1 text-sm text-slate-600">
@@ -138,14 +143,11 @@ export default async function ShiftPeriodsPage({
                     <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
                       {statusLabels[period.status]}
                     </span>
-                    <Link
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                      href={`/admin/shift-periods/${period.id}`}
-                    >
+                    <span className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700">
                       詳細へ
-                    </Link>
+                    </span>
                     {period.status === "open" ? (
-                      <form action={closeShiftPeriodAction}>
+                      <form action={closeShiftPeriodAction} className="relative z-10">
                         <input
                           name="shiftPeriodId"
                           type="hidden"
@@ -159,7 +161,7 @@ export default async function ShiftPeriodsPage({
                         </button>
                       </form>
                     ) : null}
-                    <form action={deleteShiftPeriodAction}>
+                    <form action={deleteShiftPeriodAction} className="relative z-10">
                       <input
                         name="shiftPeriodId"
                         type="hidden"

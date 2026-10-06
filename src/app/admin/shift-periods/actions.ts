@@ -11,6 +11,7 @@ import {
   shiftSlotIdSchema,
   shiftTemplateIdSchema,
   shiftWorkDateSchema,
+  businessDaySettingSchema,
 } from "@/lib/validators/shift";
 import { employeeIdSchema } from "@/lib/validators/employee";
 import {
@@ -18,6 +19,12 @@ import {
   getDateKeysInRange,
   getFixedShiftTemplatesForDate,
 } from "@/lib/shifts/shiftTemplates";
+import { getCappedEndTime, resolveBusinessDay } from "@/lib/shifts/businessHours";
+import {
+  getBusinessDay,
+  listBusinessDayOverrides,
+  saveBusinessDayOverride,
+} from "@/repositories/businessDayRepository";
 import {
   autoAssignShiftPeriod,
   assignEmployeeToShiftSlot,
@@ -179,14 +186,18 @@ export async function createShiftSlotAction(formData: FormData) {
     redirect("/admin/shift-periods?error=slot");
   }
 
-  await createShiftSlot({
-    ...parsedForm.data,
-    roleLabel: parsedForm.data.roleLabel || null,
-    presetGroup: parsedForm.data.presetGroup || null,
-    breakStartTime: parsedForm.data.breakStartTime || null,
-    breakEndTime: parsedForm.data.breakEndTime || null,
-    memo: parsedForm.data.memo || null,
-  });
+  try {
+    await createShiftSlot({
+      ...parsedForm.data,
+      roleLabel: parsedForm.data.roleLabel || null,
+      presetGroup: parsedForm.data.presetGroup || null,
+      breakStartTime: parsedForm.data.breakStartTime || null,
+      breakEndTime: parsedForm.data.breakEndTime || null,
+      memo: parsedForm.data.memo || null,
+    });
+  } catch {
+    redirect(`/admin/shift-periods/${parsedForm.data.shiftPeriodId}?error=businessHours`);
+  }
 
   revalidatePath(`/admin/shift-periods/${parsedForm.data.shiftPeriodId}`);
   redirect(`/admin/shift-periods/${parsedForm.data.shiftPeriodId}?slotCreated=1`);
@@ -209,11 +220,18 @@ export async function createShiftSlotFromTemplateAction(formData: FormData) {
     redirect(`/admin/shift-periods/${periodId.data}?error=template`);
   }
 
+  const businessDay = await getBusinessDay(periodId.data, workDate.data);
+  const endTime = getCappedEndTime(template.startTime, template.endTime, businessDay);
+
+  if (!endTime) {
+    redirect(`/admin/shift-periods/${periodId.data}?error=businessHours`);
+  }
+
   await createShiftSlot({
     shiftPeriodId: periodId.data,
     workDate: workDate.data,
     startTime: template.startTime,
-    endTime: template.endTime,
+    endTime,
     requiredEmployees: template.requiredEmployees,
     roleLabel: template.roleLabel,
     presetGroup: template.group,
@@ -244,8 +262,12 @@ export async function createFixedShiftSlotsAction(formData: FormData) {
     redirect("/admin/shift-periods?error=invalid");
   }
 
-  const existingSlots = await listShiftSlotsByPeriodId(period.id);
+  const [existingSlots, overrides] = await Promise.all([
+    listShiftSlotsByPeriodId(period.id),
+    listBusinessDayOverrides(period.id),
+  ]);
   const workDates = getDateKeysInRange(period.startDate, period.endDate);
+  const overridesByDate = new Map(overrides.map((override) => [override.workDate, override]));
 
   if (workDates.length < 7 || workDates.length > 14) {
     redirect(`/admin/shift-periods/${period.id}?error=periodLength`);
@@ -254,14 +276,25 @@ export async function createFixedShiftSlotsAction(formData: FormData) {
   const existingKeys = new Set(
     existingSlots.map(
       (slot) =>
-        `${slot.workDate}|${slot.presetGroup ?? ""}|${slot.roleLabel ?? ""}|${slot.startTime}|${slot.endTime}`,
+        `${slot.workDate}|${slot.presetGroup ?? ""}|${slot.roleLabel ?? ""}`,
     ),
   );
   let createdCount = 0;
 
   for (const workDate of workDates) {
+    const businessDay = resolveBusinessDay(workDate, overridesByDate.get(workDate));
+
+    if (businessDay.isClosed || !businessDay.closingTime) {
+      continue;
+    }
+
     for (const template of getFixedShiftTemplatesForDate(workDate)) {
-      const key = `${workDate}|${template.group}|${template.roleLabel}|${template.startTime}:00|${template.endTime}:00`;
+      const endTime = getCappedEndTime(template.startTime, template.endTime, businessDay);
+
+      if (!endTime) {
+        continue;
+      }
+      const key = `${workDate}|${template.group}|${template.roleLabel}`;
 
       if (existingKeys.has(key)) {
         continue;
@@ -271,7 +304,7 @@ export async function createFixedShiftSlotsAction(formData: FormData) {
         shiftPeriodId: period.id,
         workDate,
         startTime: template.startTime,
-        endTime: template.endTime,
+        endTime,
         requiredEmployees: template.requiredEmployees,
         roleLabel: template.roleLabel,
         presetGroup: template.group,
@@ -283,6 +316,7 @@ export async function createFixedShiftSlotsAction(formData: FormData) {
         memo: template.isBackup ? "予備枠" : null,
       });
 
+      existingKeys.add(key);
       createdCount += 1;
     }
   }
@@ -291,6 +325,32 @@ export async function createFixedShiftSlotsAction(formData: FormData) {
   redirect(
     `/admin/shift-periods/${period.id}?fixedCreated=${createdCount}&date=${workDates[0]}`,
   );
+}
+
+export async function updateBusinessDayAction(formData: FormData) {
+  await requireAdmin();
+
+  const periodId = shiftPeriodIdSchema.safeParse(formData.get("shiftPeriodId"));
+  const workDate = shiftWorkDateSchema.safeParse(formData.get("workDate"));
+  const setting = businessDaySettingSchema.safeParse(formData.get("setting"));
+
+  if (!periodId.success || !workDate.success || !setting.success) {
+    redirect("/admin/shift-periods?error=invalid");
+  }
+
+  const result = await saveBusinessDayOverride({
+    shiftPeriodId: periodId.data,
+    workDate: workDate.data,
+    setting: setting.data,
+  });
+
+  if (!result.ok) {
+    redirect(`/admin/shift-periods/${periodId.data}?error=${result.reason}`);
+  }
+
+  revalidatePath(`/admin/shift-periods/${periodId.data}`);
+  revalidatePath(`/availability/periods/${periodId.data}`);
+  redirect(`/admin/shift-periods/${periodId.data}?businessDayUpdated=1`);
 }
 
 export async function deleteShiftSlotAction(formData: FormData) {

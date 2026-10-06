@@ -11,6 +11,8 @@ import {
   getAvailabilityGroupKey,
 } from "@/lib/shifts/availabilityGroups";
 import { findValidEmployeeAccessToken } from "@/repositories/employeeAccessTokenRepository";
+import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
+import { filterSlotsByBusinessHours } from "@/lib/shifts/businessHours";
 import { listShiftSlotsByPeriodId } from "@/repositories/shiftPeriodRepository";
 import {
   submitAvailabilities,
@@ -35,8 +37,13 @@ export async function submitAvailabilityAction(formData: FormData) {
   }
 
   const memo = availabilityMemoSchema.safeParse(formData.get("memo"));
-  const slots = await listShiftSlotsByPeriodId(accessToken.shiftPeriodId);
-  const availabilities: AvailabilityInput[] = slots.map((slot) => {
+  const [slots, overrides] = await Promise.all([
+    listShiftSlotsByPeriodId(accessToken.shiftPeriodId),
+    listBusinessDayOverrides(accessToken.shiftPeriodId),
+  ]);
+  const overridesByDate = new Map(overrides.map((override) => [override.workDate, override]));
+  const eligibleSlots = filterSlotsByBusinessHours(slots, overridesByDate);
+  const availabilities: AvailabilityInput[] = eligibleSlots.map((slot) => {
     const groupKey = getAvailabilityGroupKey(slot);
     const status = availabilityStatusSchema.safeParse(
       formData.get(getAvailabilityGroupFormName(slot.workDate, groupKey)),

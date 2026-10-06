@@ -15,6 +15,9 @@ import {
 } from "@/repositories/availabilityRepository";
 import { compareShiftSlots } from "@/lib/shifts/shiftSlotSorting";
 import { requiresPositionSkill } from "@/lib/shifts/shiftTemplates";
+import { getDateKeysInRange } from "@/lib/shifts/shiftTemplates";
+import { getBusinessDayLabel, isWithinBusinessHours, resolveBusinessDay } from "@/lib/shifts/businessHours";
+import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
 import {
   assignEmployeeAction,
   autoAssignShiftPeriodAction,
@@ -23,6 +26,7 @@ import {
   deleteShiftPeriodAction,
   deleteShiftAssignmentAction,
   deleteShiftSlotAction,
+  updateBusinessDayAction,
 } from "../actions";
 
 type ShiftPeriodDetailPageProps = {
@@ -41,6 +45,7 @@ type ShiftPeriodDetailPageProps = {
     fixedCreated?: string;
     slotDeleted?: string;
     unassigned?: string;
+    businessDayUpdated?: string;
   }>;
 };
 
@@ -65,6 +70,7 @@ const assignErrorMessages: Record<string, string> = {
   requires_close: "この固定シフトには閉店作業経験が必要です。",
   slot_full: "この固定シフトにはこれ以上割り当てできません。",
   slot_not_found: "固定シフトが見つかりません。",
+  outside_business_hours: "定休日または営業時間外の固定シフトには割り当てできません。",
   position_skill: "この従業員は対象ポジションに対応可能として登録されていません。",
   availability_unavailable:
     "この従業員は希望シフトで入れないと回答しています。",
@@ -122,6 +128,7 @@ export default async function ShiftPeriodDetailPage({
     assignments,
     availabilitySubmissions,
     submittedAvailabilities,
+    businessDayOverrides,
     query,
   ] =
     await Promise.all([
@@ -131,12 +138,26 @@ export default async function ShiftPeriodDetailPage({
     listAssignmentsByShiftPeriodId(periodId),
     listAvailabilitySubmissionsByPeriodId(periodId),
     listSubmittedAvailabilitiesByPeriodId(periodId),
+    listBusinessDayOverrides(periodId),
     searchParams,
   ]);
 
   if (!period) {
     notFound();
   }
+
+  const overridesByDate = new Map(
+    businessDayOverrides.map((override) => [override.workDate, override]),
+  );
+  const businessDates = getDateKeysInRange(period.startDate, period.endDate);
+  const invalidExistingSlotCount = slots.filter(
+    (slot) =>
+      !isWithinBusinessHours(
+        slot.startTime,
+        slot.endTime,
+        resolveBusinessDay(slot.workDate, overridesByDate.get(slot.workDate)),
+      ),
+  ).length;
 
   const assignmentsBySlotId = new Map<string, typeof assignments>();
 
@@ -305,7 +326,7 @@ export default async function ShiftPeriodDetailPage({
               既に同じ固定シフトがある場合は追加しません。
             </p>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              現時点では土曜・日曜を土日祝扱いにします。祝日の個別判定は店舗カレンダー追加後に対応します。
+              祝日も土日祝用の枠を使い、各日の閉店時刻に合わせて終了時刻を調整します。定休日には作成しません。
             </p>
             <form action={createFixedShiftSlotsAction} className="mt-5">
               <input name="shiftPeriodId" type="hidden" value={period.id} />
@@ -387,6 +408,17 @@ export default async function ShiftPeriodDetailPage({
           ) : null}
           {query?.unassigned ? <StatusMessage>割当を解除しました。</StatusMessage> : null}
           {query?.closed ? <StatusMessage>シフト期間を締切にしました。</StatusMessage> : null}
+          {query?.businessDayUpdated ? <StatusMessage>営業時間を保存しました。</StatusMessage> : null}
+          {query?.error === "conflicting_slots" ? (
+            <StatusMessage tone="error">
+              この日の既存シフトが新しい営業時間と重なります。対象のシフトを削除してから変更してください。
+            </StatusMessage>
+          ) : null}
+          {query?.error === "businessHours" || query?.error === "invalid_date" ? (
+            <StatusMessage tone="error">
+              定休日または営業時間外のため、シフトを作成・変更できません。
+            </StatusMessage>
+          ) : null}
           {query?.error === "token" ? (
             <StatusMessage tone="error">
               希望提出URLを発行できませんでした。
@@ -403,6 +435,69 @@ export default async function ShiftPeriodDetailPage({
                 "割当できませんでした。条件と人数を確認してください。"}
             </StatusMessage>
           ) : null}
+          {invalidExistingSlotCount > 0 ? (
+            <StatusMessage tone="error">
+              現在の営業時間に合わない既存シフトが{invalidExistingSlotCount}件あります。
+              対象の枠を確認してください。これらは新しい割当と勤務希望の対象から除外されます。
+            </StatusMessage>
+          ) : null}
+
+          <div className="rounded-md border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <h2 className="text-base font-semibold text-slate-950">日ごとの営業時間</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                自動では翌日が土日祝なら22:00、それ以外は21:00まで営業します。
+              </p>
+            </div>
+            <div className="divide-y divide-slate-200">
+              {businessDates.map((date) => {
+                const override = overridesByDate.get(date);
+                const businessDay = resolveBusinessDay(date, override);
+                const selectedSetting = override
+                  ? override.isClosed
+                    ? "closed"
+                    : override.closingTime?.slice(0, 5) ?? "auto"
+                  : "auto";
+
+                return (
+                  <form
+                    action={updateBusinessDayAction}
+                    className="flex flex-wrap items-center gap-3 px-5 py-3"
+                    key={date}
+                  >
+                    <input name="shiftPeriodId" type="hidden" value={period.id} />
+                    <input name="workDate" type="hidden" value={date} />
+                    <div className="min-w-[120px] flex-1">
+                      <p className="text-sm font-medium text-slate-950">{formatDateTabLabel(date)}</p>
+                      <p className="text-xs text-slate-600">
+                        {getBusinessDayLabel(businessDay)} / {businessDay.isManualOverride ? "手動" : "自動"}
+                      </p>
+                    </div>
+                    <label className="sr-only" htmlFor={`business-day-${date}`}>
+                      {formatDateTabLabel(date)}の営業設定
+                    </label>
+                    <select
+                      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      defaultValue={selectedSetting}
+                      id={`business-day-${date}`}
+                      name="setting"
+                    >
+                      <option value="auto">自動</option>
+                      <option value="closed">定休日</option>
+                      <option value="21:00">21時まで</option>
+                      <option value="22:00">22時まで</option>
+                    </select>
+                    <button
+                      className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                      type="submit"
+                    >
+                      保存
+                    </button>
+                  </form>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="rounded-md border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-5 py-4">
@@ -505,6 +600,13 @@ export default async function ShiftPeriodDetailPage({
                             {formatTime(slot.breakEndTime)}
                           </p>
                         ) : null}
+                        {!isWithinBusinessHours(
+                          slot.startTime,
+                          slot.endTime,
+                          resolveBusinessDay(slot.workDate, overridesByDate.get(slot.workDate)),
+                        ) ? (
+                          <p className="mt-1 text-xs font-medium text-red-700">営業時間外の既存枠</p>
+                        ) : null}
                       </div>
                       <div className="space-y-1 text-xs text-slate-500">
                         <p>
@@ -524,7 +626,12 @@ export default async function ShiftPeriodDetailPage({
                           );
                           const unavailableEmployeeIds =
                             unavailableEmployeeIdsBySlotId.get(slot.id) ?? new Set();
-                          const assignableEmployees = employees.filter((employee) => {
+                          const isValidBusinessSlot = isWithinBusinessHours(
+                            slot.startTime,
+                            slot.endTime,
+                            resolveBusinessDay(slot.workDate, overridesByDate.get(slot.workDate)),
+                          );
+                          const assignableEmployees = isValidBusinessSlot ? employees.filter((employee) => {
                             if (assignedEmployeeIds.has(employee.id)) {
                               return false;
                             }
@@ -557,7 +664,7 @@ export default async function ShiftPeriodDetailPage({
                             }
 
                             return true;
-                          });
+                          }) : [];
                           const remainingCount =
                             slot.requiredEmployees - slotAssignments.length;
 
