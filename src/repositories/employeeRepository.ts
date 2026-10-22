@@ -14,8 +14,7 @@ export type EmployeeInput = {
   name: string;
   displayName: string;
   employmentType: EmploymentType;
-  weekdayHourlyWage: number;
-  holidayHourlyWage: number;
+  hourlyWage: number;
   maxHoursPerDay: string;
   maxHoursPerWeek: string;
   minDaysPerPeriod: number;
@@ -130,8 +129,7 @@ export async function createEmployee(input: EmployeeInput) {
       name: input.name,
       displayName: input.displayName,
       employmentType: input.employmentType,
-      weekdayHourlyWage: input.weekdayHourlyWage,
-      holidayHourlyWage: input.holidayHourlyWage,
+      hourlyWage: input.hourlyWage,
       maxHoursPerDay: input.maxHoursPerDay,
       maxHoursPerWeek: input.maxHoursPerWeek,
       minDaysPerPeriod: input.minDaysPerPeriod,
@@ -155,8 +153,7 @@ export async function updateEmployee(id: string, input: EmployeeInput) {
       name: input.name,
       displayName: input.displayName,
       employmentType: input.employmentType,
-      weekdayHourlyWage: input.weekdayHourlyWage,
-      holidayHourlyWage: input.holidayHourlyWage,
+      hourlyWage: input.hourlyWage,
       maxHoursPerDay: input.maxHoursPerDay,
       maxHoursPerWeek: input.maxHoursPerWeek,
       minDaysPerPeriod: input.minDaysPerPeriod,

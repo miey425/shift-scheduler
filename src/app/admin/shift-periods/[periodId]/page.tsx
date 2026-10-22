@@ -187,10 +187,7 @@ export default async function ShiftPeriodDetailPage({
       employee.id,
       calculateEstimatedPay(
         payableShiftsByEmployeeId.get(employee.id) ?? [],
-        {
-          weekdayHourlyWage: employee.weekdayHourlyWage,
-          holidayHourlyWage: employee.holidayHourlyWage,
-        },
+        employee.hourlyWage,
       ),
     ]),
   );
@@ -501,7 +498,7 @@ export default async function ShiftPeriodDetailPage({
                             {employee.displayName}
                             {!employee.isActive ? <span className="ml-1 text-xs text-slate-500">（無効）</span> : null}
                             <p className="mt-1 text-xs font-normal text-slate-500">
-                              時給 平日 {formatYen(employee.weekdayHourlyWage)} / 土日祝 {formatYen(employee.holidayHourlyWage)}
+                              時給 平日 {formatYen(employee.hourlyWage)} / 土日祝 {formatYen(employee.hourlyWage + 100)}
                             </p>
                             <p className="text-xs font-normal text-slate-500">
                               平日 {formatYen(summary.weekdayPay)} / 土日祝 {formatYen(summary.holidayPay)}

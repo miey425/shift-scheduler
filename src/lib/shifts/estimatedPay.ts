@@ -1,10 +1,5 @@
 import { isPublicHoliday } from "@/lib/shifts/businessHours";
 
-export type WageRates = {
-  weekdayHourlyWage: number;
-  holidayHourlyWage: number;
-};
-
 export type PayableShift = {
   workDate: string;
   startTime: string;
@@ -55,7 +50,7 @@ function addDays(date: string, days: number) {
 
 export function calculateEstimatedPay(
   shifts: PayableShift[],
-  wages: WageRates,
+  hourlyWage: number,
 ): EstimatedPaySummary {
   let weekdayMinutes = 0;
   let holidayMinutes = 0;
@@ -94,11 +89,12 @@ export function calculateEstimatedPay(
     }
   }
 
-  const weekdayPay = Math.round((weekdayMinutes * wages.weekdayHourlyWage) / 60);
-  const holidayPay = Math.round((holidayMinutes * wages.holidayHourlyWage) / 60);
+  const weekdayPay = Math.round((weekdayMinutes * hourlyWage) / 60);
+  const holidayHourlyWage = hourlyWage + 100;
+  const holidayPay = Math.round((holidayMinutes * holidayHourlyWage) / 60);
   const nightPremium = Math.round(
-    (weekdayNightMinutes * wages.weekdayHourlyWage +
-      holidayNightMinutes * wages.holidayHourlyWage) / 240,
+    (weekdayNightMinutes * hourlyWage +
+      holidayNightMinutes * holidayHourlyWage) / 240,
   );
 
   return {

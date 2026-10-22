@@ -20,7 +20,7 @@ test("平日、土日、祝日の時給を分けて見込給与を算出する",
     { workDate: "2026-10-09", startTime: "09:00", endTime: "13:00", breakStartTime: null, breakEndTime: null },
     { workDate: "2026-10-10", startTime: "09:00", endTime: "14:00", breakStartTime: null, breakEndTime: null },
     { workDate: "2026-10-12", startTime: "17:00", endTime: "18:00", breakStartTime: null, breakEndTime: null },
-  ], { weekdayHourlyWage: 1100, holidayHourlyWage: 1200 });
+  ], 1100);
 
   assert.deepEqual(summary, {
     weekdayMinutes: 240,
@@ -38,7 +38,7 @@ test("平日、土日、祝日の時給を分けて見込給与を算出する",
 test("1分単位の給与を最後に円単位へ丸める", () => {
   const summary = calculateEstimatedPay([
     { workDate: "2026-10-09", startTime: "09:00", endTime: "09:01", breakStartTime: null, breakEndTime: null },
-  ], { weekdayHourlyWage: 1000, holidayHourlyWage: 1200 });
+  ], 1000);
 
   assert.equal(summary.estimatedPay, 17);
 });
@@ -46,7 +46,7 @@ test("1分単位の給与を最後に円単位へ丸める", () => {
 test("22時から翌5時の勤務に25%の深夜手当を加算し、休憩を除外する", () => {
   const summary = calculateEstimatedPay([
     { workDate: "2026-10-09", startTime: "20:00", endTime: "23:00", breakStartTime: "22:15", breakEndTime: "22:30" },
-  ], { weekdayHourlyWage: 1200, holidayHourlyWage: 1300 });
+  ], 1200);
 
   assert.deepEqual(summary, {
     weekdayMinutes: 165,
@@ -64,7 +64,7 @@ test("22時から翌5時の勤務に25%の深夜手当を加算し、休憩を�
 test("日をまたぐシフトは翌日の休日区分と午前5時までの深夜時間を反映する", () => {
   const summary = calculateEstimatedPay([
     { workDate: "2026-10-09", startTime: "23:00", endTime: "06:00", breakStartTime: "02:00", breakEndTime: "02:30" },
-  ], { weekdayHourlyWage: 1200, holidayHourlyWage: 1300 });
+  ], 1200);
 
   assert.equal(summary.weekdayNightMinutes, 60);
   assert.equal(summary.holidayNightMinutes, 270);

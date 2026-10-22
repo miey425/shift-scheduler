@@ -84,16 +84,11 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
                 <option value="temporary">短期</option>
               </select>
             </label>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">平日時給（円）</span>
-                <input className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" min="0" name="weekdayHourlyWage" required type="number" defaultValue="0" />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">土日祝時給（円）</span>
-                <input className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" min="0" name="holidayHourlyWage" required type="number" defaultValue="0" />
-              </label>
-            </div>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">時給（平日・円）</span>
+              <input className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" min="0" name="hourlyWage" required type="number" defaultValue="0" />
+              <span className="mt-1 block text-xs text-slate-500">土日祝は自動で100円加算します。</span>
+            </label>
             <div className="space-y-2">
               <FormCheckbox label="18歳未満・高校生" name="isHighSchoolStudent" />
             </div>
@@ -140,8 +135,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
                       ))}
                     </select>
                     <input className="h-8 rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.memo ?? ""} name="memo" placeholder="メモ" />
-                    <label className="text-xs text-slate-600">平日時給（円）<input className="mt-1 h-8 w-full rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.weekdayHourlyWage} min="0" name="weekdayHourlyWage" required type="number" /></label>
-                    <label className="text-xs text-slate-600">土日祝時給（円）<input className="mt-1 h-8 w-full rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.holidayHourlyWage} min="0" name="holidayHourlyWage" required type="number" /></label>
+                    <label className="text-xs text-slate-600">時給（平日・円）<input className="mt-1 h-8 w-full rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.hourlyWage} min="0" name="hourlyWage" required type="number" /><span className="mt-1 block">土日祝は+100円</span></label>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <FormCheckbox defaultChecked={employee.isHighSchoolStudent} label="18歳未満・高校生" name="isHighSchoolStudent" />
