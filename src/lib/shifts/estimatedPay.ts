@@ -16,8 +16,11 @@ export type PayableShift = {
 export type EstimatedPaySummary = {
   weekdayMinutes: number;
   holidayMinutes: number;
+  weekdayNightMinutes: number;
+  holidayNightMinutes: number;
   weekdayPay: number;
   holidayPay: number;
+  nightPremium: number;
   totalMinutes: number;
   estimatedPay: number;
 };
@@ -28,12 +31,26 @@ function timeToMinutes(time: string) {
 }
 
 export function calculateWorkingMinutes(shift: PayableShift) {
-  const duration = timeToMinutes(shift.endTime) - timeToMinutes(shift.startTime);
-  const breakDuration = shift.breakStartTime && shift.breakEndTime
-    ? timeToMinutes(shift.breakEndTime) - timeToMinutes(shift.breakStartTime)
-    : 0;
+  const start = timeToMinutes(shift.startTime);
+  let end = timeToMinutes(shift.endTime);
+  if (end <= start) end += 24 * 60;
 
-  return Math.max(0, duration - Math.max(0, breakDuration));
+  let breakDuration = 0;
+  if (shift.breakStartTime && shift.breakEndTime) {
+    let breakStart = timeToMinutes(shift.breakStartTime);
+    if (breakStart < start) breakStart += 24 * 60;
+    let breakEnd = timeToMinutes(shift.breakEndTime);
+    if (breakEnd <= breakStart) breakEnd += 24 * 60;
+    breakDuration = Math.max(0, Math.min(end, breakEnd) - Math.max(start, breakStart));
+  }
+
+  return Math.max(0, end - start - breakDuration);
+}
+
+function addDays(date: string, days: number) {
+  const [year, month, day] = date.split("-").map(Number);
+  const value = new Date(Date.UTC(year, month - 1, day + days));
+  return value.toISOString().slice(0, 10);
 }
 
 export function calculateEstimatedPay(
@@ -42,27 +59,58 @@ export function calculateEstimatedPay(
 ): EstimatedPaySummary {
   let weekdayMinutes = 0;
   let holidayMinutes = 0;
+  let weekdayNightMinutes = 0;
+  let holidayNightMinutes = 0;
 
   for (const shift of shifts) {
-    const minutes = calculateWorkingMinutes(shift);
+    const start = timeToMinutes(shift.startTime);
+    let end = timeToMinutes(shift.endTime);
+    if (end <= start) end += 24 * 60;
 
-    if (isPublicHoliday(shift.workDate)) {
-      holidayMinutes += minutes;
-    } else {
-      weekdayMinutes += minutes;
+    let breakStart = Number.POSITIVE_INFINITY;
+    let breakEnd = Number.POSITIVE_INFINITY;
+    if (shift.breakStartTime && shift.breakEndTime) {
+      breakStart = timeToMinutes(shift.breakStartTime);
+      if (breakStart < start) breakStart += 24 * 60;
+      breakEnd = timeToMinutes(shift.breakEndTime);
+      if (breakEnd <= breakStart) breakEnd += 24 * 60;
+    }
+
+    for (let minute = start; minute < end; minute += 1) {
+      if (minute >= breakStart && minute < breakEnd) continue;
+
+      const dayOffset = Math.floor(minute / (24 * 60));
+      const minuteOfDay = minute % (24 * 60);
+      const isHoliday = isPublicHoliday(addDays(shift.workDate, dayOffset));
+      const isNight = minuteOfDay >= 22 * 60 || minuteOfDay < 5 * 60;
+
+      if (isHoliday) {
+        holidayMinutes += 1;
+        if (isNight) holidayNightMinutes += 1;
+      } else {
+        weekdayMinutes += 1;
+        if (isNight) weekdayNightMinutes += 1;
+      }
     }
   }
 
   const weekdayPay = Math.round((weekdayMinutes * wages.weekdayHourlyWage) / 60);
   const holidayPay = Math.round((holidayMinutes * wages.holidayHourlyWage) / 60);
+  const nightPremium = Math.round(
+    (weekdayNightMinutes * wages.weekdayHourlyWage +
+      holidayNightMinutes * wages.holidayHourlyWage) / 240,
+  );
 
   return {
     weekdayMinutes,
     holidayMinutes,
+    weekdayNightMinutes,
+    holidayNightMinutes,
     weekdayPay,
     holidayPay,
+    nightPremium,
     totalMinutes: weekdayMinutes + holidayMinutes,
-    estimatedPay: weekdayPay + holidayPay,
+    estimatedPay: weekdayPay + holidayPay + nightPremium,
   };
 }
 

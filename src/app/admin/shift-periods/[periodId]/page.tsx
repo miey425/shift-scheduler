@@ -473,20 +473,22 @@ export default async function ShiftPeriodDetailPage({
             <div className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-base font-semibold text-slate-950">勤務時間・見込給与</h2>
               <p className="mt-1 text-sm text-slate-600">
-                現在の割当と登録時給から算出した概算です。残業・深夜割増、交通費、控除などは含みません。
+                現在の割当と登録時給から算出した概算です。22:00〜翌5:00の深夜時間は休憩を除き25%加算します。残業割増、交通費、控除などは含みません。
               </p>
             </div>
             {wageEmployees.length === 0 ? (
               <p className="px-5 py-4 text-sm text-slate-600">従業員が登録されていません。</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm">
+                <table className="w-full min-w-[860px] text-left text-sm">
                   <thead className="bg-slate-50 text-xs text-slate-500">
                     <tr>
                       <th className="px-4 py-3 font-medium">従業員</th>
                       <th className="px-4 py-3 font-medium">平日時間</th>
                       <th className="px-4 py-3 font-medium">土日祝時間</th>
+                      <th className="px-4 py-3 font-medium">深夜時間</th>
                       <th className="px-4 py-3 font-medium">合計勤務時間</th>
+                      <th className="px-4 py-3 font-medium">深夜手当</th>
                       <th className="px-4 py-3 font-medium">見込給与</th>
                     </tr>
                   </thead>
@@ -504,10 +506,15 @@ export default async function ShiftPeriodDetailPage({
                             <p className="text-xs font-normal text-slate-500">
                               平日 {formatYen(summary.weekdayPay)} / 土日祝 {formatYen(summary.holidayPay)}
                             </p>
+                            <p className="text-xs font-normal text-slate-500">
+                              平日深夜 {formatWorkingTime(summary.weekdayNightMinutes)} / 土日祝深夜 {formatWorkingTime(summary.holidayNightMinutes)}
+                            </p>
                           </th>
                           <td className="px-4 py-3 text-slate-700">{formatWorkingTime(summary.weekdayMinutes)}</td>
                           <td className="px-4 py-3 text-slate-700">{formatWorkingTime(summary.holidayMinutes)}</td>
+                          <td className="px-4 py-3 text-slate-700">{formatWorkingTime(summary.weekdayNightMinutes + summary.holidayNightMinutes)}</td>
                           <td className="px-4 py-3 font-medium text-slate-900">{formatWorkingTime(summary.totalMinutes)}</td>
+                          <td className="px-4 py-3 text-slate-700">{formatYen(summary.nightPremium)}</td>
                           <td className="px-4 py-3 font-semibold text-slate-900">{formatYen(summary.estimatedPay)}</td>
                         </tr>
                       );
