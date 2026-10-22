@@ -15,7 +15,7 @@ export default async function AdminDashboardPage() {
             フェーズ4の状態
           </h2>
           <p className="mt-3 text-sm leading-6 text-slate-700">
-            従業員、シフト期間、固定シフト、希望提出URL、希望回収、手動割当、自動割当、Excel出力を管理できる状態です。
+            従業員、シフト期間、シフト、希望提出URL、希望回収、手動割当、自動割当、Excel出力を管理できる状態です。
             自動割当は提出済みの希望と従業員条件を使い、未割当の枠を補完します。
           </p>
           <div className="mt-5 grid gap-2 sm:grid-cols-2">

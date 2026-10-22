@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   availabilities,
@@ -471,20 +471,6 @@ export async function assignEmployeeToShiftSlot(input: {
 
   if (unavailableSubmission) {
     return { ok: false, reason: "availability_unavailable" as const };
-  }
-
-  const [assignedCount] = await getDb()
-    .select({ value: count() })
-    .from(shiftAssignments)
-    .where(
-      and(
-        eq(shiftAssignments.shiftSlotId, input.shiftSlotId),
-        eq(shiftAssignments.status, "assigned"),
-      ),
-    );
-
-  if ((assignedCount?.value ?? 0) >= slot.requiredEmployees) {
-    return { ok: false, reason: "slot_full" as const };
   }
 
   await getDb()

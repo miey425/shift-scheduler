@@ -7,41 +7,18 @@ export const shiftPeriodStatusValues = [
   "published",
 ] as const;
 
-function countInclusiveDays(startDate: string, endDate: string) {
-  const start = new Date(`${startDate}T00:00:00.000Z`);
-  const end = new Date(`${endDate}T00:00:00.000Z`);
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-
-  return Math.floor((end.getTime() - start.getTime()) / millisecondsPerDay) + 1;
-}
-
 export const shiftPeriodFormSchema = z
   .object({
     name: z.string().trim().min(1, "期間名を入力してください。").max(120),
     startDate: z.string().date(),
     endDate: z.string().date(),
-    submissionDeadline: z.string().trim().optional(),
     status: z.enum(shiftPeriodStatusValues),
     memo: z.string().trim().max(1000).optional(),
   })
   .refine((value) => value.startDate <= value.endDate, {
     message: "終了日は開始日以降にしてください。",
     path: ["endDate"],
-  })
-  .refine(
-    (value) => {
-      if (value.startDate > value.endDate) {
-        return true;
-      }
-
-      const days = countInclusiveDays(value.startDate, value.endDate);
-      return days >= 7 && days <= 14;
-    },
-    {
-      message: "シフト期間は1週間から2週間にしてください。",
-      path: ["endDate"],
-    },
-  );
+  });
 
 export const shiftSlotFormSchema = z
   .object({

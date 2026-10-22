@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { StatusMessage } from "@/components/admin/StatusMessage";
+import { ShiftPeriodCreateForm } from "@/components/admin/ShiftPeriodCreateForm";
 import { listShiftPeriods } from "@/repositories/shiftPeriodRepository";
 import {
   closeShiftPeriodAction,
-  createShiftPeriodAction,
   deleteShiftPeriodAction,
 } from "./actions";
 
@@ -35,67 +35,15 @@ export default async function ShiftPeriodsPage({
     <main className="min-h-screen bg-slate-50">
       <AdminHeader currentPath="/admin/shift-periods" title="シフト期間管理" />
 
-      <div className="mx-auto grid max-w-6xl gap-5 px-6 py-6 lg:grid-cols-[340px_1fr]">
-        <section className="rounded-md border border-slate-200 bg-white p-5">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(500px,1.1fr)_minmax(0,1fr)] lg:gap-8">
+        <section className="rounded-md border border-slate-200 bg-white p-5 sm:p-6">
           <h2 className="text-base font-semibold text-slate-950">
             シフト期間を作成
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            シフト期間は1週間から2週間で作成してください。
+            開始日と終了日を選択してください。1日だけの期間も作成できます。
           </p>
-          <form action={createShiftPeriodAction} className="mt-5 space-y-4">
-            <input name="status" type="hidden" value="open" />
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">期間名</span>
-              <input
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                name="name"
-                placeholder="2026年9月前半"
-                required
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">開始日</span>
-                <input
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  name="startDate"
-                  required
-                  type="date"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">終了日</span>
-                <input
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  name="endDate"
-                  required
-                  type="date"
-                />
-              </label>
-            </div>
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">提出期限</span>
-              <input
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                name="submissionDeadline"
-                type="datetime-local"
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">メモ</span>
-              <textarea
-                className="mt-1 min-h-20 w-full rounded-md border border-slate-300 px-3 py-2"
-                name="memo"
-              />
-            </label>
-            <button
-              className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
-              type="submit"
-            >
-              作成
-            </button>
-          </form>
+          <ShiftPeriodCreateForm />
         </section>
 
         <section className="space-y-4">
@@ -105,10 +53,14 @@ export default async function ShiftPeriodsPage({
           {params?.deleted ? (
             <StatusMessage>シフト期間を削除しました。</StatusMessage>
           ) : null}
-          {params?.error ? (
+          {params?.error === "validation" ? <StatusMessage tone="error">期間名と日付を確認してください。終了日は開始日以降にしてください。</StatusMessage> : null}
+          {params?.error === "database" ? (
             <StatusMessage tone="error">
-              入力内容、期間の日数、またはDB接続を確認してください。
+              シフト期間を保存できませんでした。DB接続と入力値を確認してください。
             </StatusMessage>
+          ) : null}
+          {params?.error && !["validation", "database"].includes(params.error) ? (
+            <StatusMessage tone="error">シフト期間を作成できませんでした。入力内容を確認してください。</StatusMessage>
           ) : null}
 
           <div className="rounded-md border border-slate-200 bg-white">

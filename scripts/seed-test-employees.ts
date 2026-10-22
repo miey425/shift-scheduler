@@ -51,6 +51,9 @@ const testShiftPeriod = {
   submissionDeadline: new Date("2026-09-10T14:59:59.000Z"),
 };
 
+// テスト従業員の基準時給。土日祝はアプリ側で100円加算されます。
+const testHourlyWage = 1100;
+
 const testEmployees: TestEmployee[] = [
   {
     id: "10000000-0000-4000-8000-000000000001",
@@ -327,6 +330,7 @@ async function main() {
         name: employee.name,
         displayName: employee.displayName,
         employmentType: employee.employmentType,
+        hourlyWage: testHourlyWage,
         maxHoursPerDay: "24.00",
         maxHoursPerWeek: "168.00",
         minDaysPerPeriod: 0,
@@ -343,6 +347,7 @@ async function main() {
           name: employee.name,
           displayName: employee.displayName,
           employmentType: employee.employmentType,
+          hourlyWage: testHourlyWage,
           maxHoursPerDay: "24.00",
           maxHoursPerWeek: "168.00",
           minDaysPerPeriod: 0,

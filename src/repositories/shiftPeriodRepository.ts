@@ -1,6 +1,6 @@
 import "server-only";
 
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { shiftPeriods, shiftSlots } from "@/db/schema";
 
@@ -15,7 +15,18 @@ export type ShiftPeriodInput = {
   memo?: string | null;
 };
 
+async function closeExpiredShiftPeriods() {
+  await getDb()
+    .update(shiftPeriods)
+    .set({ status: "closed", updatedAt: new Date() })
+    .where(and(
+      eq(shiftPeriods.status, "open"),
+      lte(shiftPeriods.submissionDeadline, new Date()),
+    ));
+}
+
 export async function listShiftPeriods() {
+  await closeExpiredShiftPeriods();
   return getDb()
     .select()
     .from(shiftPeriods)
@@ -23,6 +34,7 @@ export async function listShiftPeriods() {
 }
 
 export async function findShiftPeriodById(id: string) {
+  await closeExpiredShiftPeriods();
   const [period] = await getDb()
     .select()
     .from(shiftPeriods)
