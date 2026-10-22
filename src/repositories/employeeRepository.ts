@@ -14,6 +14,8 @@ export type EmployeeInput = {
   name: string;
   displayName: string;
   employmentType: EmploymentType;
+  weekdayHourlyWage: number;
+  holidayHourlyWage: number;
   maxHoursPerDay: string;
   maxHoursPerWeek: string;
   minDaysPerPeriod: number;
@@ -110,6 +112,17 @@ export async function listActiveEmployees(): Promise<EmployeeWithPositionSkills[
   return attachPositionSkills(employeeRows);
 }
 
+export async function listActiveEmployeesForAvailability() {
+  return getDb()
+    .select({
+      id: employees.id,
+      displayName: employees.displayName,
+    })
+    .from(employees)
+    .where(eq(employees.isActive, true))
+    .orderBy(asc(employees.displayName));
+}
+
 export async function createEmployee(input: EmployeeInput) {
   const [employee] = await getDb()
     .insert(employees)
@@ -117,6 +130,8 @@ export async function createEmployee(input: EmployeeInput) {
       name: input.name,
       displayName: input.displayName,
       employmentType: input.employmentType,
+      weekdayHourlyWage: input.weekdayHourlyWage,
+      holidayHourlyWage: input.holidayHourlyWage,
       maxHoursPerDay: input.maxHoursPerDay,
       maxHoursPerWeek: input.maxHoursPerWeek,
       minDaysPerPeriod: input.minDaysPerPeriod,
@@ -140,6 +155,8 @@ export async function updateEmployee(id: string, input: EmployeeInput) {
       name: input.name,
       displayName: input.displayName,
       employmentType: input.employmentType,
+      weekdayHourlyWage: input.weekdayHourlyWage,
+      holidayHourlyWage: input.holidayHourlyWage,
       maxHoursPerDay: input.maxHoursPerDay,
       maxHoursPerWeek: input.maxHoursPerWeek,
       minDaysPerPeriod: input.minDaysPerPeriod,

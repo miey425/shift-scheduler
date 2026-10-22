@@ -20,7 +20,7 @@ import {
 } from "@/lib/shifts/businessHours";
 import { getDateKeysInRange } from "@/lib/shifts/shiftTemplates";
 import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
-import { listActiveEmployees } from "@/repositories/employeeRepository";
+import { listActiveEmployeesForAvailability } from "@/repositories/employeeRepository";
 import {
   findAvailabilitySubmission,
   listAvailabilitiesBySubmissionId,
@@ -90,7 +90,7 @@ export default async function SharedAvailabilityPage({
   const [period, slots, employees, overrides] = await Promise.all([
     findShiftPeriodById(parsedPeriodId.data),
     listShiftSlotsByPeriodId(parsedPeriodId.data),
-    listActiveEmployees(),
+    listActiveEmployeesForAvailability(),
     listBusinessDayOverrides(parsedPeriodId.data),
   ]);
 

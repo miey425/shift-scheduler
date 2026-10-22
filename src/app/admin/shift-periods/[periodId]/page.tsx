@@ -8,7 +8,7 @@ import {
   findShiftPeriodById,
   listShiftSlotsByPeriodId,
 } from "@/repositories/shiftPeriodRepository";
-import { listActiveEmployees } from "@/repositories/employeeRepository";
+import { listActiveEmployees, listEmployees } from "@/repositories/employeeRepository";
 import { listAssignmentsByShiftPeriodId } from "@/repositories/assignmentRepository";
 import {
   listAvailabilitySubmissionsByPeriodId,
@@ -19,6 +19,7 @@ import { requiresPositionSkill } from "@/lib/shifts/shiftTemplates";
 import { getDateKeysInRange } from "@/lib/shifts/shiftTemplates";
 import { getBusinessDayLabel, isWithinBusinessHours, resolveBusinessDay } from "@/lib/shifts/businessHours";
 import { listBusinessDayOverrides } from "@/repositories/businessDayRepository";
+import { calculateEstimatedPay, formatWorkingTime, formatYen } from "@/lib/shifts/estimatedPay";
 import { encodeShiftPeriodId } from "@/lib/availability/shortUrl";
 import {
   assignEmployeeAction,
@@ -127,6 +128,7 @@ export default async function ShiftPeriodDetailPage({
     period,
     slots,
     employees,
+    wageEmployees,
     assignments,
     availabilitySubmissions,
     submittedAvailabilities,
@@ -137,6 +139,7 @@ export default async function ShiftPeriodDetailPage({
     findShiftPeriodById(periodId),
     listShiftSlotsByPeriodId(periodId),
     listActiveEmployees(),
+    listEmployees(),
     listAssignmentsByShiftPeriodId(periodId),
     listAvailabilitySubmissionsByPeriodId(periodId),
     listSubmittedAvailabilitiesByPeriodId(periodId),
@@ -170,6 +173,27 @@ export default async function ShiftPeriodDetailPage({
   }
 
   const slotsById = new Map(slots.map((slot) => [slot.id, slot]));
+  const payableShiftsByEmployeeId = new Map<string, typeof slots>();
+  for (const assignment of assignments) {
+    if (assignment.status === "cancelled") continue;
+    const slot = slotsById.get(assignment.shiftSlotId);
+    if (!slot) continue;
+    const employeeShifts = payableShiftsByEmployeeId.get(assignment.employeeId) ?? [];
+    employeeShifts.push(slot);
+    payableShiftsByEmployeeId.set(assignment.employeeId, employeeShifts);
+  }
+  const estimatedPayByEmployeeId = new Map(
+    wageEmployees.map((employee) => [
+      employee.id,
+      calculateEstimatedPay(
+        payableShiftsByEmployeeId.get(employee.id) ?? [],
+        {
+          weekdayHourlyWage: employee.weekdayHourlyWage,
+          holidayHourlyWage: employee.holidayHourlyWage,
+        },
+      ),
+    ]),
+  );
   const assignedSlotsByEmployeeId = new Map<
     string,
     { assignmentId: string; slot: typeof slots[number] }[]
@@ -444,6 +468,55 @@ export default async function ShiftPeriodDetailPage({
               対象の枠を確認してください。これらは新しい割当と勤務希望の対象から除外されます。
             </StatusMessage>
           ) : null}
+
+          <section className="rounded-md border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <h2 className="text-base font-semibold text-slate-950">勤務時間・見込給与</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                現在の割当と登録時給から算出した概算です。残業・深夜割増、交通費、控除などは含みません。
+              </p>
+            </div>
+            {wageEmployees.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-slate-600">従業員が登録されていません。</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">従業員</th>
+                      <th className="px-4 py-3 font-medium">平日時間</th>
+                      <th className="px-4 py-3 font-medium">土日祝時間</th>
+                      <th className="px-4 py-3 font-medium">合計勤務時間</th>
+                      <th className="px-4 py-3 font-medium">見込給与</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {wageEmployees.map((employee) => {
+                      const summary = estimatedPayByEmployeeId.get(employee.id)!;
+                      return (
+                        <tr key={employee.id}>
+                          <th className="px-4 py-3 align-top font-medium text-slate-900">
+                            {employee.displayName}
+                            {!employee.isActive ? <span className="ml-1 text-xs text-slate-500">（無効）</span> : null}
+                            <p className="mt-1 text-xs font-normal text-slate-500">
+                              時給 平日 {formatYen(employee.weekdayHourlyWage)} / 土日祝 {formatYen(employee.holidayHourlyWage)}
+                            </p>
+                            <p className="text-xs font-normal text-slate-500">
+                              平日 {formatYen(summary.weekdayPay)} / 土日祝 {formatYen(summary.holidayPay)}
+                            </p>
+                          </th>
+                          <td className="px-4 py-3 text-slate-700">{formatWorkingTime(summary.weekdayMinutes)}</td>
+                          <td className="px-4 py-3 text-slate-700">{formatWorkingTime(summary.holidayMinutes)}</td>
+                          <td className="px-4 py-3 font-medium text-slate-900">{formatWorkingTime(summary.totalMinutes)}</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900">{formatYen(summary.estimatedPay)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
 
           <div className="rounded-md border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-5 py-4">

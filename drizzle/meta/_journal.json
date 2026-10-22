@@ -43,6 +43,13 @@
       "when": 1791244800000,
       "tag": "0005_business_day_overrides",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792645809983,
+      "tag": "0006_employee_hourly_wages",
+      "breakpoints": true
     }
   ]
 }

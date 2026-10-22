@@ -14,6 +14,7 @@ import { compareShiftSlots } from "@/lib/shifts/shiftSlotSorting";
 import { requiresPositionSkill } from "@/lib/shifts/shiftTemplates";
 import { isEligibleForAutoAssignment } from "@/lib/shifts/availabilityGroups";
 import { filterSlotsByBusinessHours, isWithinBusinessHours } from "@/lib/shifts/businessHours";
+import { calculateWorkingMinutes } from "@/lib/shifts/estimatedPay";
 import { getBusinessDay, listBusinessDayOverrides } from "./businessDayRepository";
 
 export type ShiftAssignmentWithEmployee = {
@@ -111,15 +112,7 @@ function parseTimeToMinutes(time: string) {
 }
 
 function calculateSlotHours(slot: PeriodShiftSlot) {
-  const workMinutes =
-    parseTimeToMinutes(slot.endTime) - parseTimeToMinutes(slot.startTime);
-  const breakMinutes =
-    slot.breakStartTime && slot.breakEndTime
-      ? parseTimeToMinutes(slot.breakEndTime) -
-        parseTimeToMinutes(slot.breakStartTime)
-      : 0;
-
-  return Math.max(0, workMinutes - breakMinutes) / 60;
+  return calculateWorkingMinutes(slot) / 60;
 }
 
 function endsAfterLateNightStart(slot: PeriodShiftSlot) {

@@ -17,7 +17,7 @@ import {
   getAvailabilityGroupFormName,
   getAvailabilityGroupKey,
 } from "@/lib/shifts/availabilityGroups";
-import { listActiveEmployees } from "@/repositories/employeeRepository";
+import { listActiveEmployeesForAvailability } from "@/repositories/employeeRepository";
 import {
   findShiftPeriodById,
   listShiftSlotsByPeriodId,
@@ -51,7 +51,7 @@ export async function chooseSharedAvailabilityEmployeeAction(formData: FormData)
 
   const [period, employees] = await Promise.all([
     findShiftPeriodById(periodId.data),
-    listActiveEmployees(),
+    listActiveEmployeesForAvailability(),
   ]);
 
   if (!period || !employees.some((employee) => employee.id === employeeId.data)) {
@@ -88,7 +88,7 @@ export async function submitSharedAvailabilityAction(formData: FormData) {
 
   const [period, employees, slots, overrides] = await Promise.all([
     findShiftPeriodById(periodId.data),
-    listActiveEmployees(),
+    listActiveEmployeesForAvailability(),
     listShiftSlotsByPeriodId(periodId.data),
     listBusinessDayOverrides(periodId.data),
   ]);

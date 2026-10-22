@@ -33,6 +33,8 @@ function toEmployeeInput(formData: FormData): EmployeeInput {
     name: formData.get("name"),
     displayName: formData.get("displayName"),
     employmentType: formData.get("employmentType"),
+    weekdayHourlyWage: formData.get("weekdayHourlyWage"),
+    holidayHourlyWage: formData.get("holidayHourlyWage"),
     maxHoursPerDay: formData.get("maxHoursPerDay"),
     maxHoursPerWeek: formData.get("maxHoursPerWeek"),
     minDaysPerPeriod: formData.get("minDaysPerPeriod"),

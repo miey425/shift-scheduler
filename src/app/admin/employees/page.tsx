@@ -84,6 +84,16 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
                 <option value="temporary">短期</option>
               </select>
             </label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">平日時給（円）</span>
+                <input className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" min="0" name="weekdayHourlyWage" required type="number" defaultValue="0" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">土日祝時給（円）</span>
+                <input className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" min="0" name="holidayHourlyWage" required type="number" defaultValue="0" />
+              </label>
+            </div>
             <div className="space-y-2">
               <FormCheckbox label="18歳未満・高校生" name="isHighSchoolStudent" />
             </div>
@@ -121,7 +131,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
                   <input name="maxHoursPerWeek" type="hidden" value={employee.maxHoursPerWeek} />
                   <input name="minDaysPerPeriod" type="hidden" value={employee.minDaysPerPeriod} />
                   <input name="maxDaysPerPeriod" type="hidden" value={employee.maxDaysPerPeriod} />
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <input className="h-8 rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.name} name="name" />
                     <input className="h-8 rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.displayName} name="displayName" />
                     <select className="h-8 rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.employmentType} name="employmentType">
@@ -130,6 +140,8 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
                       ))}
                     </select>
                     <input className="h-8 rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.memo ?? ""} name="memo" placeholder="メモ" />
+                    <label className="text-xs text-slate-600">平日時給（円）<input className="mt-1 h-8 w-full rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.weekdayHourlyWage} min="0" name="weekdayHourlyWage" required type="number" /></label>
+                    <label className="text-xs text-slate-600">土日祝時給（円）<input className="mt-1 h-8 w-full rounded-md border border-slate-300 px-2 text-sm" defaultValue={employee.holidayHourlyWage} min="0" name="holidayHourlyWage" required type="number" /></label>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <FormCheckbox defaultChecked={employee.isHighSchoolStudent} label="18歳未満・高校生" name="isHighSchoolStudent" />

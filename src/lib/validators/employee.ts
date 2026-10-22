@@ -11,6 +11,8 @@ export const employeeFormSchema = z.object({
   name: z.string().trim().min(1, "氏名を入力してください。").max(120),
   displayName: z.string().trim().min(1, "表示名を入力してください。").max(120),
   employmentType: z.enum(employmentTypeValues),
+  weekdayHourlyWage: z.coerce.number().int().min(0).max(2_147_483_647),
+  holidayHourlyWage: z.coerce.number().int().min(0).max(2_147_483_647),
   maxHoursPerDay: z.coerce.number().min(1).max(24),
   maxHoursPerWeek: z.coerce.number().min(1).max(168),
   minDaysPerPeriod: z.coerce.number().int().min(0).max(31),

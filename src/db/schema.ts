@@ -81,6 +81,8 @@ export const employees = pgTable(
     name: varchar("name", { length: 120 }).notNull(),
     displayName: varchar("display_name", { length: 120 }).notNull(),
     employmentType: employmentTypeEnum("employment_type").default("part_time").notNull(),
+    weekdayHourlyWage: integer("weekday_hourly_wage").default(0).notNull(),
+    holidayHourlyWage: integer("holiday_hourly_wage").default(0).notNull(),
     maxHoursPerDay: numeric("max_hours_per_day", {
       precision: 4,
       scale: 2,
@@ -101,6 +103,8 @@ export const employees = pgTable(
   (table) => [
     index("employees_is_active_idx").on(table.isActive),
     index("employees_display_name_idx").on(table.displayName),
+    check("employees_weekday_hourly_wage_nonnegative", sql`${table.weekdayHourlyWage} >= 0`),
+    check("employees_holiday_hourly_wage_nonnegative", sql`${table.holidayHourlyWage} >= 0`),
   ],
 );
 

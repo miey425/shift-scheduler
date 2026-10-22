@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { employeeIdSchema } from "@/lib/validators/employee";
 import { shiftPeriodIdSchema } from "@/lib/validators/shift";
-import { listActiveEmployees } from "@/repositories/employeeRepository";
+import { listActiveEmployeesForAvailability } from "@/repositories/employeeRepository";
 import { findAvailabilitySubmission } from "@/repositories/availabilityRepository";
 import { findShiftPeriodById } from "@/repositories/shiftPeriodRepository";
 
@@ -29,7 +29,7 @@ export default async function SharedAvailabilitySubmittedPage({
 
   const [period, employees, submission] = await Promise.all([
     findShiftPeriodById(parsedPeriodId.data),
-    listActiveEmployees(),
+    listActiveEmployeesForAvailability(),
     findAvailabilitySubmission({
       employeeId: parsedEmployeeId.data,
       shiftPeriodId: parsedPeriodId.data,
